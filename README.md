@@ -7,7 +7,7 @@ concurrent channel abstraction to return results quickly and incrementally.
 
 ```minions -h <file with list of hostnames> <ssh command to run>```
 
-```shell
+```
 $ minions -h list_of_hostnames.txt uname
 host1 (0.37s)
 Darwin
@@ -22,7 +22,7 @@ $
 
 There's also a small mode that prints the results in a compact format:
 
-```shell
+```
 $ minions -s -h list_of_hostsnames.txt uname
 host1: Darwin
 host2: Darwin

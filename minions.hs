@@ -85,9 +85,8 @@ printResult Result{..} = do
 printShortResult :: Result -> IO ()
 printShortResult Result{..} =
     case resPayload of
-      Left s  -> putColorLn Vivid Red $ resHost ++ t ++ rstrip s
-      Right s -> putStrLn $ resHost ++ t ++ rstrip s
-    where t = printf " (%.1fs): " (realToFrac resTime :: Double) 
+      Left s  -> putColorLn Vivid Red $ resHost ++ ": " ++ rstrip s
+      Right s -> putStrLn $ resHost ++ ": " ++ rstrip s
 
 
 ----------------
@@ -96,22 +95,18 @@ printShortResult Result{..} =
 
 data Options = Options
     { oHelp    :: Bool
-    , oHosts   :: FilePath
     , oTimeout :: Int
     , oHandler :: Result -> IO ()
     }
 
 defaultOptions :: Options
-defaultOptions = Options False "" (10 * 1000000) printResult
+defaultOptions = Options False (10 * 1000000) printResult
 
 options :: [OptDescr (Options -> Options)]
 options =
     [ Option [] ["help"]
       (NoArg (\opts -> opts { oHelp = True }))
       "display this help"
-    , Option "h" ["hosts"]
-      (ReqArg (\f opts -> opts { oHosts = f }) "FILE")
-      "FILE containing ssh host names (one per line)"
     , Option "t" ["timeout"] 
       (ReqArg (\f opts -> opts { oTimeout = (read f :: Int) * 1000000 }) 
         "SECONDS")
@@ -132,13 +127,15 @@ showError :: String -> IO a
 showError msg = hPutStrLn stderr (msg ++ header) >> exitFailure
 
 header :: String
-header = usageInfo "Usage: minions [-hst] command" options
+header = usageInfo "Usage: minions [-st] host_file command" options
 
 main :: IO ()
 main = do
-    (Options{..}, cmd) <- parseArgs
+    (Options{..}, args) <- parseArgs
     when oHelp (putStrLn header >> exitSuccess)
-    when (oHosts == "") (showError "Please specify a hostname file with -h\n")
-    when (null cmd) (showError "Please specify a command to run\n")
-    hosts <- (filter ((not . null) . strip) . lines) `fmap` readFile oHosts
-    runTasks (mkTasks hosts cmd) oTimeout oHandler 
+    if length args < 2
+      then showError "Please specify a hostname file and a command\n"
+      else do
+        let (file:cmd) = args
+        hosts <- (filter ((not . null) . strip) . lines) `fmap` readFile file
+        runTasks (mkTasks hosts cmd) oTimeout oHandler 

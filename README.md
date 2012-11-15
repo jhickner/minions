@@ -1,9 +1,9 @@
-### Minions
+# Minions
 
 Minions is a fast parallel SSH tool written in haskell. It uses haskell's
 concurrent channel abstraction to return results quickly and incrementally.
 
-# Usage:
+### Usage:
 
 ```minions -h <file with list of hostnames> <ssh command to run>```
 
@@ -30,7 +30,7 @@ host3: Darwin
 $
 ```
 
-# Installation
+### Installation
 
 First install ghc via your system's package manager. On OSX it's as simple as:
 

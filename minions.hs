@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, BangPatterns #-}
 
 module Main where
 
@@ -34,7 +34,7 @@ data Result = Result
 timeIO :: IO a -> IO (NominalDiffTime, a)
 timeIO ioa = do
     t1 <- getCurrentTime
-    a <- ioa
+    !a <- ioa
     t2 <- getCurrentTime
     return (diffUTCTime t2 t1, a)
 
@@ -44,7 +44,7 @@ runTasks ts tmout handler = do
     forM_ ts $ run out
     replicateM_ (length ts) (readChan out >>= handler)
   where run ch t = forkIO $ do
-                       res <- runTask t tmout
+                       !res <- runTask t tmout
                        writeChan ch res
 
 runTask :: Task -> Int -> IO Result

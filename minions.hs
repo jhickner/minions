@@ -2,21 +2,20 @@
 
 module Main where
 
-import System.Environment (getArgs)
-import System.Exit (ExitCode(..), exitFailure, exitSuccess)
+import System.Exit (ExitCode(..))
 import System.Console.ANSI
-import System.Console.GetOpt
 import System.Process (readProcessWithExitCode)
 import System.Timeout (timeout)
-import System.IO (stderr, hPutStrLn)
 
 import Control.Concurrent
 import Control.Monad
+import Data.Monoid
 
 import Data.Time.Clock
 import Data.String.Utils
 import Text.Printf
 
+import Options.Applicative
 
 data Task = Task
     { taskHost    :: String
@@ -69,9 +68,9 @@ mkTasks hosts cmd = map f hosts
 ----------------
 
 putColorLn :: ColorIntensity -> Color -> String -> IO ()
-putColorLn intensity color str = do
+putColorLn intensity color s = do
     setSGR [SetColor Foreground intensity color]
-    putStrLn str
+    putStrLn s
     setSGR []
 
 printResult :: Result -> IO ()
@@ -94,48 +93,35 @@ printShortResult Result{..} =
 ----------------
 
 data Options = Options
-    { oHelp    :: Bool
+    { oFile    :: FilePath
+    , oCommand :: String
     , oTimeout :: Int
-    , oHandler :: Result -> IO ()
-    }
+    , oShort   :: Bool
+    } deriving Show
 
-defaultOptions :: Options
-defaultOptions = Options False (10 * 1000000) printResult
-
-options :: [OptDescr (Options -> Options)]
-options =
-    [ Option [] ["help"]
-      (NoArg (\opts -> opts { oHelp = True }))
-      "display this help"
-    , Option "t" ["timeout"] 
-      (ReqArg (\f opts -> opts { oTimeout = (read f :: Int) * 1000000 }) 
-        "SECONDS")
-      "ssh timeout in SECONDS (default 10)"
-    , Option "s" ["short"]
-      (NoArg (\opts -> opts { oHandler = printShortResult }))
-      "display results in short format"
-    ]
-
-parseArgs :: IO (Options, [String])
-parseArgs = do
-    argv <- getArgs
-    case getOpt RequireOrder options argv of
-      (o, n, []) -> return (foldl (flip id) defaultOptions o, n)
-      (_, _, es) -> showError $ concat es
-
-showError :: String -> IO a
-showError msg = hPutStrLn stderr (msg ++ header) >> exitFailure
-
-header :: String
-header = usageInfo "Usage: minions [-st] host_file command" options
+options :: Parser Options
+options = Options <$> argument str (metavar "FILE")
+                  <*> argument str (metavar "COMMAND")
+                  <*> option
+                      ( short 't'
+                      <> metavar "TIMEOUT"
+                      <> help "ssh timout in seconds"
+                      <> showDefault
+                      <> value 10 )
+                  <*> switch 
+                      ( short 's'
+                      <> metavar "SHORT"
+                      <> help "display results in short format" )
 
 main :: IO ()
-main = do
-    (Options{..}, args) <- parseArgs
-    when oHelp (putStrLn header >> exitSuccess)
-    if length args < 2
-      then showError "Please specify a hostname file and a command\n"
-      else do
-        let (file:cmd) = args
-        hosts <- (filter ((not . null) . strip) . lines) `fmap` readFile file
-        runTasks (mkTasks hosts cmd) oTimeout oHandler 
+main = execParser (info (helper <*> options) fullDesc) >>= go
+
+go :: Options -> IO ()
+go Options{..} = do
+    hosts <- readHosts
+    runTasks (mkTasks hosts cmd) tmout handler
+  where
+    readHosts = filter ((not . null) . strip) . lines <$> readFile oFile
+    handler   = if oShort then printShortResult else printResult
+    tmout     = oTimeout * 1000000
+    cmd       = words oCommand

@@ -26,4 +26,5 @@ executable minions
                        ansi-terminal ==0.5.*, 
                        process ==1.1.*, 
                        time ==1.4.*, 
-                       MissingH ==1.2.*
+                       MissingH ==1.2.*,
+                       optparse-applicative

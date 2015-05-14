@@ -22,9 +22,9 @@ source-repository head
 executable minions
   main-is:             minions.hs
   GHC-options:         -Wall -O2 -threaded
-  build-depends:       base ==4.5.*, 
+  build-depends:       base >= 4.5, 
                        ansi-terminal ==0.5.*, 
-                       process ==1.1.*, 
+                       process,
                        time ==1.4.*, 
                        MissingH ==1.2.*,
-                       optparse-applicative
+                       optparse-applicative == 0.4.1
